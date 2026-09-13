@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bubble Game — Accenture Practice Simulator</title>
+  <meta name="description" content="Practice the Accenture bubble game: click bubbles smallest to largest. Adaptive difficulty, 5 modes, exam simulation, daily tracking.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════ HOME SCREEN ══════════════════ -->
+<div id="home-screen" class="screen active">
+  <div class="home-inner">
+    <div class="home-title">⬤ BUBBLE GAME</div>
+    <div class="home-sub">Accenture Practice Simulator · Click Smallest → Largest</div>
+
+    <!-- Daily progress strip (filled by JS) -->
+    <div class="daily-strip" id="daily-strip"></div>
+
+    <!-- Mode grid -->
+    <div class="section-label">SELECT MODE</div>
+    <div class="mode-grid">
+      <div class="mode-card" data-mode="learning" id="mode-learning">
+        <div class="mode-icon">🧠</div>
+        <div class="mode-name">Learning</div>
+        <div class="mode-desc">Hints &amp; shortcuts shown. Must fix mistakes before advancing.</div>
+      </div>
+      <div class="mode-card" data-mode="speed" id="mode-speed">
+        <div class="mode-icon">⚡</div>
+        <div class="mode-name">Speed</div>
+        <div class="mode-desc">Timer running. No hints. Score only at end.</div>
+      </div>
+      <div class="mode-card" data-mode="weakness" id="mode-weakness">
+        <div class="mode-icon">🎯</div>
+        <div class="mode-name">Weakness</div>
+        <div class="mode-desc">Drill one category. Biased toward your weak spots.</div>
+      </div>
+      <div class="mode-card" data-mode="adaptive" id="mode-adaptive">
+        <div class="mode-icon">🏆</div>
+        <div class="mode-name">Adaptive Mock</div>
+        <div class="mode-desc">Starts easy, adapts to performance. Most realistic sim.</div>
+      </div>
+      <div class="mode-card mode-card-exam" data-mode="exam" id="mode-exam">
+        <div class="mode-icon">🔴</div>
+        <div class="mode-name">Exam Simulation</div>
+        <div class="mode-desc">Countdown per question. Auto-advance on timeout. No hints ever.</div>
+      </div>
+    </div>
+
+    <!-- Weakness category picker -->
+    <div class="extra-panel" id="weakness-select-wrap">
+      <div class="section-label">PICK CATEGORY</div>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+
+    <!-- Exam time-per-question picker -->
+    <div class="extra-panel" id="exam-settings-wrap">
+      <div class="section-label">SECONDS PER QUESTION</div>
+      <div class="count-row" id="time-row">
+        <button class="count-btn" data-val="10">10 s</button>
+        <button class="count-btn" data-val="15">15 s</button>
+        <button class="count-btn selected" data-val="20">20 s</button>
+        <button class="count-btn" data-val="30">30 s</button>
+      </div>
+    </div>
+
+    <!-- Question count picker -->
+    <div class="section-label">QUESTIONS</div>
+    <div class="count-row" id="count-row">
+      <button class="count-btn" data-val="10">10</button>
+      <button class="count-btn" data-val="20">20</button>
+      <button class="count-btn selected" data-val="30">30</button>
+      <button class="count-btn" data-val="50">50</button>
+      <button class="count-btn" data-val="100">100</button>
+      <button class="count-btn" data-val="0">∞</button>
+    </div>
+
+    <button class="start-btn" id="start-btn">START GAME</button>
+  </div>
+</div>
+
+<!-- ══════════════════ GAME SCREEN ══════════════════ -->
+<div id="game-screen" class="screen">
+  <div class="game-container">
+
+    <!-- Header -->
+    <div class="game-header">
+      <div class="header-left">
+        <div class="game-title">⬤ BUBBLE</div>
+        <div class="mode-badge" id="mode-badge">ADAPTIVE MOCK</div>
+      </div>
+      <div class="header-center">
+        <div class="question-counter">QUESTION</div>
+        <div class="question-num" id="q-counter">01 / 30</div>
+      </div>
+      <div class="header-right">
+        <div class="timer-display" id="timer-display">00:00</div>
+        <div class="timer-label" id="timer-label">TIME</div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-val score-val" id="score-display">0</div>
+        <div class="stat-lbl">Score</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val streak-val" id="streak-display">0🔥</div>
+        <div class="stat-lbl">Streak</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val level-val" id="level-display">Easy</div>
+        <div class="stat-lbl">Level</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val acc-val" id="acc-display">—</div>
+        <div class="stat-lbl">Accuracy</div>
+      </div>
+    </div>
+
+    <!-- Difficulty bar -->
+    <div class="diff-bar-wrap">
+      <div class="diff-bar"><div class="diff-bar-fill" id="diff-bar-fill" style="width:20%"></div></div>
+      <div class="diff-label" id="diff-label">Level 1 / 5</div>
+    </div>
+
+    <!-- Bubble Arena -->
+    <div class="bubble-arena" id="bubble-arena"></div>
+
+    <!-- Instruction -->
+    <div class="instruction-bar">
+      <div class="instruction-text">Click: <span>SMALLEST → LARGEST</span></div>
+    </div>
+
+    <!-- Selection dots -->
+    <div class="selection-indicator" id="selection-indicator">
+      <div class="sel-dot active" id="dot-0"></div>
+      <div class="sel-dot" id="dot-1"></div>
+      <div class="sel-dot" id="dot-2"></div>
+    </div>
+
+    <!-- Keyboard hint -->
+    <div class="key-hint" id="key-hint">
+      Keyboard: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> select bubbles by position
+    </div>
+
+  </div><!-- /game-container -->
+
+  <!-- Feedback toast (mid-screen flash) -->
+  <div class="feedback-toast" id="feedback-toast">
+    <div class="toast-icon" id="toast-icon"></div>
+    <div class="toast-title" id="toast-title"></div>
+    <div class="toast-detail" id="toast-detail"></div>
+    <div class="toast-shortcut" id="toast-shortcut"></div>
+  </div>
+
+  <!-- Round overlay (shown after each question in non-exam modes) -->
+  <div class="round-overlay" id="round-overlay">
+    <div class="round-card">
+      <div class="round-result-icon" id="round-icon"></div>
+      <div class="round-result-title" id="round-title"></div>
+      <div class="round-pts" id="round-pts"></div>
+      <div class="round-answer-reveal" id="round-answer-reveal"></div>
+      <div class="round-breakdown" id="round-breakdown"></div>
+      <div class="shortcut-hint" id="shortcut-hint"></div>
+      <button class="next-btn" id="next-btn">NEXT QUESTION →</button>
+    </div>
+  </div>
+
+  <!-- Stop button (for endless mode) -->
+  <button class="stop-btn" id="stop-btn" style="display:none">■ END SESSION</button>
+
+</div><!-- /game-screen -->
+
+<!-- ══════════════════ RESULTS SCREEN ══════════════════ -->
+<div id="results-screen" class="screen">
+  <div class="results-scroll">
+    <div class="results-inner" id="results-inner">
+      <!-- Filled by ui.js renderResults() -->
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
