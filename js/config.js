@@ -29,9 +29,9 @@ const SPREAD = {
 };
 
 const ADAPTIVE = {
-  levelUp:   6,    // performance score to trigger level increase
-  levelDown: -3,   // performance score to trigger level decrease
-  fastMs:    8000, // "fast" threshold for bonus performance points
+  levelUp:   2,    // only 2 performance points needed to increase level
+  levelDown: -2,   // decrease level if struggling
+  fastMs:    12000, // generous "fast" threshold (12 seconds)
 };
 
 const SCORING = {

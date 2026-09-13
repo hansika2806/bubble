@@ -315,7 +315,13 @@ const UI = (() => {
       { lbl: 'Highest Level',   val: diffName(highestLevel), cls: '' },
     ];
 
-    let html = `<div class="results-title">📊 PRACTICE RESULTS</div>`;
+    const modeLabel = MODE_LABELS[state.mode] || state.mode.toUpperCase();
+    const levelSubtitle = state.fixedLevel
+      ? `Fixed Level ${state.fixedLevel} (${diffName(state.fixedLevel)})`
+      : state.mode === 'exam' ? '1 → 5 Stage Progression' : 'Adaptive Difficulty';
+
+    let html = `<div class="results-title">📊 ${modeLabel} RESULTS</div>
+      <div style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:-.5rem;margin-bottom:1.2rem;letter-spacing:.05em">${levelSubtitle}</div>`;
     html += `<div class="results-grid">`;
     html += cards.map(c => `
       <div class="result-card">
@@ -401,7 +407,7 @@ const UI = (() => {
         <td style="font-size:.72rem;max-width:200px;word-break:break-word;line-height:1.6">${exprs}</td>
         <td>${badge}</td>
         <td>${q.elapsed}s</td>
-        <td>${diffName(q.level)}</td>
+        <td><strong style="color:var(--accent)">L${q.level}</strong> · ${diffName(q.level)}</td>
       </tr>`;
     }).join('');
     html += `</tbody></table>`;

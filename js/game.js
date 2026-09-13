@@ -26,6 +26,7 @@ const State = {
   // Adaptive engine
   adaptive:         null,       // AdaptiveEngine instance
   currentLevel:     1,
+  fixedLevel:       null,       // null = progression/adaptive, 1..5 = fixed level
 
   // Timing
   questionStartTime: 0,         // Date.now() when question started
@@ -52,11 +53,12 @@ const State = {
 // ── GAME LIFECYCLE ────────────────────────────────────────────────
 
 function startGame(opts) {
-  // opts: { mode, forceCat, totalQuestions, examTimeSec }
+  // opts: { mode, forceCat, totalQuestions, examTimeSec, fixedLevel }
   State.mode           = opts.mode;
   State.forceCat       = opts.forceCat || null;
   State.totalQuestions = opts.totalQuestions; // 0 = endless
   State.examTimeSec    = opts.examTimeSec || 20;
+  State.fixedLevel     = opts.fixedLevel || null;
 
   // Reset all counters
   State.score          = 0;
@@ -77,9 +79,9 @@ function startGame(opts) {
   State.catWeights = Storage.getCatWeights();
 
   // Set starting adaptive level
-  const startLevel = opts.mode === 'learning' ? 2 : 1;
+  const startLevel = opts.fixedLevel || (opts.mode === 'learning' ? 2 : 1);
   State.adaptive   = new AdaptiveEngine(startLevel);
-  State.currentLevel = opts.mode === 'exam' ? 1 : State.adaptive.level;
+  State.currentLevel = opts.fixedLevel || (opts.mode === 'exam' ? 1 : State.adaptive.level);
 
   // Session timer (counts up, for results display)
   State.sessionElapsed = 0;
@@ -99,10 +101,12 @@ function loadQuestion() {
   }
 
   // Determine difficulty level:
-  if (State.mode === 'exam') {
+  if (State.fixedLevel) {
+    State.currentLevel = State.fixedLevel;
+  } else if (State.mode === 'exam') {
     if (State.totalQuestions > 0) {
       // Divide total questions into 5 progressive stages: Level 1 -> Level 5
-      // e.g. 20 questions: Q1-4 (L1), Q5-8 (L2), Q9-12 (L3), Q13-16 (L4), Q17-20 (L5)
+      // e.g. 10 questions: Q1-2 (L1), Q3-4 (L2), Q5-6 (L3), Q7-8 (L4), Q9-10 (L5)
       const stage = Math.floor((State.questionIndex / State.totalQuestions) * 5);
       State.currentLevel = clamp(stage + 1, 1, 5);
     } else {
@@ -372,5 +376,6 @@ function playAgain() {
     forceCat:       State.forceCat,
     totalQuestions: State.totalQuestions,
     examTimeSec:    State.examTimeSec,
+    fixedLevel:     State.fixedLevel,
   });
 }

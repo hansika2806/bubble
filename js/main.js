@@ -5,10 +5,11 @@
 (function () {
 
   // ── Home screen state ─────────────────────────────────────────
-  let selectedMode     = 'adaptive';
+  let selectedMode     = 'exam';
   let selectedCat      = null;
-  let selectedCount    = 30;
+  let selectedCount    = 20;
   let selectedExamTime = 20;
+  let selectedLevel    = 'progression'; // 'progression' or 1..5
 
   // ── initHome ──────────────────────────────────────────────────
   function initHome() {
@@ -23,8 +24,12 @@
       });
     });
 
-    // Default selection highlight
-    document.getElementById('mode-adaptive').classList.add('selected');
+    // Default selection highlight - default to Exam Simulation
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+    const examCard = document.getElementById('mode-exam');
+    if (examCard) examCard.classList.add('selected');
+    const examSettings = document.getElementById('exam-settings-wrap');
+    if (examSettings) examSettings.classList.add('visible');
 
     // Category buttons (weakness mode)
     const grid = document.getElementById('cat-grid');
@@ -50,6 +55,18 @@
       selectedCount = parseInt(btn.dataset.val, 10);
     });
 
+    // Difficulty level buttons
+    const levelRow = document.getElementById('level-row');
+    if (levelRow) {
+      levelRow.addEventListener('click', e => {
+        const btn = e.target.closest('.count-btn');
+        if (!btn) return;
+        document.querySelectorAll('#level-row .count-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedLevel = btn.dataset.level;
+      });
+    }
+
     // Exam time buttons
     document.getElementById('time-row').addEventListener('click', e => {
       const btn = e.target.closest('.count-btn');
@@ -70,6 +87,7 @@
         forceCat:       selectedMode === 'weakness' ? selectedCat : null,
         totalQuestions: selectedCount,
         examTimeSec:    selectedExamTime,
+        fixedLevel:     selectedLevel === 'progression' ? null : parseInt(selectedLevel, 10),
       });
     });
 
