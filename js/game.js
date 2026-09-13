@@ -79,7 +79,7 @@ function startGame(opts) {
   // Set starting adaptive level
   const startLevel = opts.mode === 'learning' ? 2 : 1;
   State.adaptive   = new AdaptiveEngine(startLevel);
-  State.currentLevel = State.adaptive.level;
+  State.currentLevel = opts.mode === 'exam' ? 1 : State.adaptive.level;
 
   // Session timer (counts up, for results display)
   State.sessionElapsed = 0;
@@ -98,7 +98,21 @@ function loadQuestion() {
     return;
   }
 
-  State.currentLevel    = State.adaptive.level;
+  // Determine difficulty level:
+  if (State.mode === 'exam') {
+    if (State.totalQuestions > 0) {
+      // Divide total questions into 5 progressive stages: Level 1 -> Level 5
+      // e.g. 20 questions: Q1-4 (L1), Q5-8 (L2), Q9-12 (L3), Q13-16 (L4), Q17-20 (L5)
+      const stage = Math.floor((State.questionIndex / State.totalQuestions) * 5);
+      State.currentLevel = clamp(stage + 1, 1, 5);
+    } else {
+      // Endless / timed exam: step up difficulty every 4 questions
+      State.currentLevel = clamp(Math.floor(State.questionIndex / 4) + 1, 1, 5);
+    }
+  } else {
+    State.currentLevel = State.adaptive.level;
+  }
+
   State.question        = generateQuestion(
     State.currentLevel,
     State.forceCat,
@@ -271,8 +285,10 @@ function completeRound() {
     // pts is not added to score (already penalised during wrong clicks)
   }
 
-  // ── Adaptive update ──────────────────────────────────────────
-  State.adaptive.update(perfect, timeMs);
+  // ── Adaptive update (non-exam modes) ─────────────────────────
+  if (State.mode !== 'exam') {
+    State.adaptive.update(perfect, timeMs);
+  }
 
   // ── Category stats ───────────────────────────────────────────
   State.question.bubbles.forEach(b => {

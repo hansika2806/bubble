@@ -17,7 +17,7 @@ const CAT_LABELS = {
   mixed:            'Mixed Operations',
 };
 
-const LEVEL_NAMES = ['', 'Easy', 'Easy+', 'Medium', 'Medium+', 'Difficult'];
+const LEVEL_NAMES = ['', 'Easy', 'Easy+', 'Medium', 'Medium+', 'Advanced'];
 
 // How spread-apart the 3 bubble values must be (max - min of the 3 values)
 const SPREAD = {

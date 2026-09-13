@@ -57,8 +57,79 @@ class AdaptiveEngine {
  */
 function generateQuestion(diff, forceCat, usedExprs, catWeights) {
   const { min: minSpread, max: maxSpread } = SPREAD[diff] || SPREAD[1];
-  const MAX_ATTEMPTS = 80;
+  const MAX_ATTEMPTS = 60;
 
+  // For high difficulty (Level 4 & 5), use candidate pool selection to find tight-spread triplets reliably
+  if (diff >= 4 && !forceCat) {
+    const poolSize = 16;
+    const candidates = [];
+    for (let i = 0; i < poolSize * 2 && candidates.length < poolSize; i++) {
+      const e = generateExpression(diff, null, usedExprs, catWeights);
+      if (e && e.val > 0 && !candidates.some(c => c.expr === e.expr || Math.abs(c.val - e.val) < 0.0001)) {
+        candidates.push(e);
+      }
+    }
+
+    if (candidates.length >= 3) {
+      candidates.sort((a, b) => a.val - b.val);
+
+      // Search for adjacent triplets meeting the exact spread window
+      for (let i = 0; i <= candidates.length - 3; i++) {
+        const c0 = candidates[i], c1 = candidates[i + 1], c2 = candidates[i + 2];
+        const sp = c2.val - c0.val;
+        if (sp >= minSpread && sp <= maxSpread) {
+          const bubbles = [
+            { id: 'A', expression: c0.expr, value: c0.val, cat: c0.cat, shortcut: c0.shortcut },
+            { id: 'B', expression: c1.expr, value: c1.val, cat: c1.cat, shortcut: c1.shortcut },
+            { id: 'C', expression: c2.expr, value: c2.val, cat: c2.cat, shortcut: c2.shortcut },
+          ];
+          if (usedExprs) {
+            usedExprs.add(c0.expr); usedExprs.add(c1.expr); usedExprs.add(c2.expr);
+          }
+          return {
+            id:           Date.now() + Math.random(),
+            difficulty:   diff,
+            bubbles:      shuffle(bubbles),
+            correctOrder: [...bubbles].sort((a, b) => a.value - b.value).map(b => b.id),
+            createdAt:    Date.now(),
+          };
+        }
+      }
+
+      // If no triplet met the strict maxSpread, pick the tightest available triplet
+      let bestTriplet = null;
+      let bestSpread = Infinity;
+      for (let i = 0; i <= candidates.length - 3; i++) {
+        const sp = candidates[i + 2].val - candidates[i].val;
+        if (sp >= minSpread && sp < bestSpread) {
+          bestSpread = sp;
+          bestTriplet = [candidates[i], candidates[i + 1], candidates[i + 2]];
+        }
+      }
+
+      if (bestTriplet && bestSpread <= maxSpread * 2.5) {
+        const bubbles = bestTriplet.map((c, idx) => ({
+          id:         String.fromCharCode(65 + idx),
+          expression: c.expr,
+          value:      c.val,
+          cat:        c.cat,
+          shortcut:   c.shortcut,
+        }));
+        if (usedExprs) {
+          bestTriplet.forEach(c => usedExprs.add(c.expr));
+        }
+        return {
+          id:           Date.now() + Math.random(),
+          difficulty:   diff,
+          bubbles:      shuffle(bubbles),
+          correctOrder: [...bubbles].sort((a, b) => a.value - b.value).map(b => b.id),
+          createdAt:    Date.now(),
+        };
+      }
+    }
+  }
+
+  // Standard path for diff 1-3 or when category is forced
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const e1 = generateExpression(diff, forceCat, usedExprs, catWeights);
     const e2 = generateExpression(diff, forceCat, usedExprs, catWeights);
@@ -67,40 +138,28 @@ function generateQuestion(diff, forceCat, usedExprs, catWeights) {
     // No duplicate expressions
     if (e1.expr === e2.expr || e1.expr === e3.expr || e2.expr === e3.expr) continue;
 
-    const vals  = [e1.val, e2.val, e3.val];
-
-    // All values must be positive
+    const vals = [e1.val, e2.val, e3.val];
     if (vals.some(v => v <= 0)) continue;
 
     const sorted = [...vals].sort((a, b) => a - b);
     const spread = sorted[2] - sorted[0];
 
-    // Spread must be within the difficulty band
     if (spread < minSpread || spread > maxSpread) continue;
 
-    // No two values should be equal (allow tiny tolerance at L4/5 for floating point)
     const tol = diff >= 4 ? 0.001 : 0;
     const [v0, v1, v2] = sorted;
     if (Math.abs(v0 - v1) <= tol && v0 !== v1) continue;
     if (Math.abs(v1 - v2) <= tol && v1 !== v2) continue;
-    // Fully identical values are OK — handled as tie by click handler
 
-    // Build bubble objects
     const bubbles = [
       { id: 'A', expression: e1.expr, value: e1.val, cat: e1.cat, shortcut: e1.shortcut },
       { id: 'B', expression: e2.expr, value: e2.val, cat: e2.cat, shortcut: e2.shortcut },
       { id: 'C', expression: e3.expr, value: e3.val, cat: e3.cat, shortcut: e3.shortcut },
     ];
 
-    // Correct order: smallest → largest value (ties OK in either order)
-    const correctOrder = [...bubbles]
-      .sort((a, b) => a.value - b.value)
-      .map(b => b.id);
-
-    // Shuffle display positions — player must solve, not use position memory
+    const correctOrder = [...bubbles].sort((a, b) => a.value - b.value).map(b => b.id);
     const displayBubbles = shuffle(bubbles);
 
-    // Register expressions as used
     if (usedExprs) {
       usedExprs.add(e1.expr);
       usedExprs.add(e2.expr);
@@ -116,10 +175,10 @@ function generateQuestion(diff, forceCat, usedExprs, catWeights) {
     };
   }
 
-  // If validation never passed, fall back to level 1 (should be very rare)
-  if (diff > 1) return generateQuestion(1, null, usedExprs, null);
+  // Fallback to diff - 1: NEVER jump straight from 5 to 1!
+  if (diff > 1) return generateQuestion(diff - 1, forceCat, usedExprs, catWeights);
 
-  // Ultimate fallback
+  // Ultimate Level 1 fallback
   const a = ri(10, 50), b = ri(20, 60), c = ri(30, 80);
   return {
     id:           Date.now(),
